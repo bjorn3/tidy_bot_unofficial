@@ -1,7 +1,8 @@
 use hyper::rt::{Future, Stream};
 use hyper::{Body, Request, Response};
 
-const GITHUB_APP_IDENTIFIER: &str = "<...>";
+const GITHUB_APP_IDENTIFIER: &str = env!("GITHUB_APP_IDENTIFIER");
+const GITHUB_PRIVATE_KEY: &str = env!("GITHUB_PRIVATE_KEY");
 
 pub fn handle(
     parts: hyper::http::request::Parts,
@@ -47,8 +48,11 @@ fn check_handler(
 
     println!("{} {}", url, check_runs_url);
 
-    for error in crate::check::run_tidy() {
-        if let Some((file, line)) = error.file_and_line {
+
+    let errors = crate::check::run_tidy();
+
+    for error in &errors {
+        if let Some((file, line)) = &error.file_and_line {
             print!("{:<32} {:<4}: ", file, line);
         } else {
             print!("{:<37}: ", "<unknown>");
@@ -62,6 +66,24 @@ fn check_handler(
         head_sha: String,
         status: &'static str,
         conclusion: &'static str,
+        output: Output
+    }
+
+    #[derive(serde::Serialize)]
+    struct Output {
+        title: &'static str,
+        summary: String,
+        text: String,
+        annotations: Vec<Annotation>,
+    }
+
+    #[derive(serde::Serialize)]
+    struct Annotation {
+        path: String,
+        start_line: u64,
+        end_line: u64,
+        annotation_level: &'static str,
+        message: String,
     }
 
     let check_run_data = CheckRun {
@@ -71,6 +93,28 @@ fn check_handler(
         conclusion: "failure", // "success"
                                //output,
                                //actions: Vec::new(),
+        output: Output {
+            title: "tidy errors",
+            summary: format!("Tidy noticed {} errors", errors.len()),
+            text: format!("```plain\n{}\n```", errors.iter().filter_map(|error| {
+                if error.file_and_line.is_none() {
+                    Some(error.message.clone())
+                } else {
+                    None
+                }
+            }).collect::<Vec<String>>().join("\n")),
+            annotations: errors.iter().filter_map(|error| {
+                error.file_and_line.as_ref().map(|&(ref file, line)| {
+                    Annotation {
+                        path: file.clone(),
+                        start_line: line,
+                        end_line: line,
+                        annotation_level: "failure",
+                        message: error.message.clone(),
+                    }
+                })
+            }).collect(),
+        }
     };
 
     let now = std::time::SystemTime::now()
@@ -87,7 +131,7 @@ fn check_handler(
 
     let token = frank_jwt::encode(
         header,
-        &std::path::PathBuf::from("./<...>.pem"),
+        &std::path::PathBuf::from(GITHUB_PRIVATE_KEY),
         &payload,
         frank_jwt::Algorithm::RS256,
     )
