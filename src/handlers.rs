@@ -1,9 +1,6 @@
 use hyper::rt::{Future, Stream};
 use hyper::{Body, Request, Response};
 
-const GITHUB_APP_IDENTIFIER: &str = env!("GITHUB_APP_IDENTIFIER");
-const GITHUB_PRIVATE_KEY: &str = env!("GITHUB_PRIVATE_KEY");
-
 pub fn handle(
     parts: hyper::http::request::Parts,
     body: Vec<u8>,
@@ -48,7 +45,6 @@ fn check_handler(
 
     println!("{} {}", url, check_runs_url);
 
-
     let errors = crate::check::run_tidy();
 
     for error in &errors {
@@ -66,7 +62,7 @@ fn check_handler(
         head_sha: String,
         status: &'static str,
         conclusion: &'static str,
-        output: Output
+        output: Output,
     }
 
     #[derive(serde::Serialize)]
@@ -91,8 +87,6 @@ fn check_handler(
         head_sha: head_sha.to_string(),
         status: "completed",
         conclusion: "failure", // "success"
-                               //output,
-                               //actions: Vec::new(),
         output: Output {
             title: "tidy errors",
             summary: format!("Tidy noticed {} errors", errors.len()),
@@ -117,41 +111,9 @@ fn check_handler(
         }
     };
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-
-    let header = serde_json::json!({});
-    let payload = serde_json::json!({
-        "iat": now,
-        "exp": now + 10 * 60,
-        "iss": GITHUB_APP_IDENTIFIER.to_string(),
-    });
-
-    let token = frank_jwt::encode(
-        header,
-        &std::path::PathBuf::from(GITHUB_PRIVATE_KEY),
-        &payload,
-        frank_jwt::Algorithm::RS256,
-    )
-    .unwrap();
-
-    println!("token {}", token);
-
     let client = reqwest::r#async::Client::new();
 
-    let res = client.post(&format!("https://api.github.com/app/installations/{}/access_tokens", installation_id))
-        .header("Accept", "application/vnd.github.machine-man-preview+json")
-        .header("Authorization", format!("Bearer {}", token))
-        .send();
-
-    let install_token = res.and_then(|mut res| res.text()).map(|text| {
-        println!("access tokens: {}", text);
-        let data = serde_json::from_str::<serde_json::Value>(&text).unwrap();
-        let data = data.as_object().unwrap();
-        data["token"].as_str().unwrap().to_string()
-    });
+    let install_token = crate::installation_token::get_installation_token(&client, installation_id);
 
     install_token.and_then(move |install_token| {
         client
@@ -170,7 +132,6 @@ fn check_handler(
                     println!("{}", body);
                 })
             })
-
     }).map_err(|err| {
                 panic!("err: {:?}", err);
             })

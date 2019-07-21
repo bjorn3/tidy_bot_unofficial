@@ -4,6 +4,7 @@ use hyper::{Body, Request, Response, Server};
 
 mod check;
 mod handlers;
+mod installation_token;
 
 fn main() {
     let addr = ([127, 0, 0, 1], 3000).into();
