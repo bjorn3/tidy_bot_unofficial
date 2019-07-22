@@ -4,7 +4,7 @@ use hyper::{Body, Request, Response, Server};
 
 mod check;
 mod handlers;
-mod installation_token;
+mod installation;
 
 fn main() {
     let addr = ([127, 0, 0, 1], std::env::var("PORT").unwrap_or("3000".to_string()).parse::<u16>().unwrap()).into();

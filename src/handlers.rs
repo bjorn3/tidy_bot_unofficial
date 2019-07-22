@@ -19,12 +19,18 @@ pub fn handle(
             let clone_url = repository["clone_url"].as_str().unwrap();
             let repo_full_name = repository["full_name"].as_str().unwrap().to_string();
 
-            let installation = data["installation"].as_object().unwrap();
-            let installation_id = installation["id"].as_u64().unwrap().to_string();
+            let installation = serde_json::from_value(data["installation"].clone()).unwrap();
 
-            check_handler(clone_url, head_sha, url, check_runs_url, repo_full_name, installation_id)
-                .map(|()| "success".to_string())
-                .boxed()
+            check_handler(
+                clone_url,
+                head_sha,
+                url,
+                check_runs_url,
+                repo_full_name,
+                installation,
+            )
+            .map(|()| "success".to_string())
+            .boxed()
         }
         _ => {
             println!("action {}", action);
@@ -39,7 +45,7 @@ fn check_handler(
     url: &str,
     check_runs_url: &str,
     repo_full_name: String,
-    installation_id: String,
+    installation: crate::installation::Installation,
 ) -> impl Future<Item = (), Error = hyper::Error> {
     crate::check::clone_repo(clone_url, head_sha).unwrap();
 
@@ -113,26 +119,30 @@ fn check_handler(
 
     let client = reqwest::r#async::Client::new();
 
-    let install_token = crate::installation_token::get_installation_token(&client, installation_id);
-
-    install_token.and_then(move |install_token| {
-        client
-            .post(&format!(
-                "https://api.github.com/repos/{repo_full_name}/check-runs",
-                repo_full_name = repo_full_name
-            ))
-            .header("Accept", "application/vnd.github.antiope-preview+json")
-            .header("Authorization", format!("Bearer {}", install_token))
-            .json(&check_run_data)
-            .send()
-            .and_then(|mut res| {
-                let status = res.status();
-                res.text().map(move |body| {
-                    println!("check run submit res: status {:?}", status);
-                    println!("{}", body);
+    installation
+        .get_installation_access_token(&client)
+        .and_then(move |install_access_token| {
+            client
+                .post(&format!(
+                    "https://api.github.com/repos/{repo_full_name}/check-runs",
+                    repo_full_name = repo_full_name
+                ))
+                .header("Accept", "application/vnd.github.antiope-preview+json")
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", install_access_token.token),
+                )
+                .json(&check_run_data)
+                .send()
+                .and_then(|mut res| {
+                    let status = res.status();
+                    res.text().map(move |body| {
+                        println!("check run submit res: status {:?}", status);
+                        println!("{}", body);
+                    })
                 })
-            })
-    }).map_err(|err| {
-                panic!("err: {:?}", err);
-            })
+        })
+        .map_err(|err| {
+            panic!("err: {:?}", err);
+        })
 }
