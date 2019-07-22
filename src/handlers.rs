@@ -45,7 +45,7 @@ fn check_handler(
     url: &str,
     check_runs_url: &str,
     repo_full_name: String,
-    installation: crate::installation::Installation,
+    installation: crate::gh::installation::Installation,
 ) -> impl Future<Item = (), Error = hyper::Error> {
     crate::check::clone_repo(clone_url, head_sha).unwrap();
 
@@ -62,31 +62,7 @@ fn check_handler(
         println!("{}", error.message);
     }
 
-    #[derive(serde::Serialize)]
-    struct CheckRun {
-        name: &'static str,
-        head_sha: String,
-        status: &'static str,
-        conclusion: &'static str,
-        output: Output,
-    }
-
-    #[derive(serde::Serialize)]
-    struct Output {
-        title: &'static str,
-        summary: String,
-        text: String,
-        annotations: Vec<Annotation>,
-    }
-
-    #[derive(serde::Serialize)]
-    struct Annotation {
-        path: String,
-        start_line: u64,
-        end_line: u64,
-        annotation_level: &'static str,
-        message: String,
-    }
+    use crate::gh::check::*;
 
     let check_run_data = CheckRun {
         name: "tidy",
@@ -130,29 +106,8 @@ fn check_handler(
 
     let client = reqwest::r#async::Client::new();
 
-    installation
-        .get_installation_access_token(&client)
-        .and_then(move |install_access_token| {
-            client
-                .post(&format!(
-                    "https://api.github.com/repos/{repo_full_name}/check-runs",
-                    repo_full_name = repo_full_name
-                ))
-                .header("Accept", "application/vnd.github.antiope-preview+json")
-                .header(
-                    "Authorization",
-                    format!("Bearer {}", install_access_token.token),
-                )
-                .json(&check_run_data)
-                .send()
-                .and_then(|mut res| {
-                    let status = res.status();
-                    res.text().map(move |body| {
-                        println!("check run submit res: status {:?}", status);
-                        println!("{}", body);
-                    })
-                })
-        })
+    check_run_data
+        .submit(&client, &installation, repo_full_name)
         .map_err(|err| {
             panic!("err: {:?}", err);
         })

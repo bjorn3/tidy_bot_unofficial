@@ -4,7 +4,11 @@ use hyper::{Body, Request, Response, Server};
 
 mod check;
 mod handlers;
-mod installation;
+
+mod gh {
+    pub mod check;
+    pub mod installation;
+}
 
 fn main() {
     let addr = (
