@@ -1,8 +1,5 @@
 use futures::Future;
 
-const GITHUB_APP_IDENTIFIER: &str = env!("GITHUB_APP_IDENTIFIER");
-const GITHUB_PRIVATE_KEY: &str = env!("GITHUB_PRIVATE_KEY");
-
 #[derive(serde::Deserialize)]
 pub struct Installation {
     id: u64,
@@ -31,12 +28,12 @@ impl Installation {
         let payload = serde_json::json!({
             "iat": now,
             "exp": now + 10 * 60,
-            "iss": GITHUB_APP_IDENTIFIER.to_string(),
+            "iss": std::env::var("GITHUB_APP_IDENTIFIER").expect("GITHUB_APP_IDENTIFIER"),
         });
 
         let token = frank_jwt::encode(
             header,
-            &std::path::PathBuf::from(GITHUB_PRIVATE_KEY),
+            &std::path::PathBuf::from(std::env::var("GITHUB_PRIVATE_KEY").expect("GITHUB_PRIVATE_KEY")),
             &payload,
             frank_jwt::Algorithm::RS256,
         )
