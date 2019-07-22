@@ -1,11 +1,37 @@
 use futures::Future;
 
 #[derive(serde::Serialize)]
+#[serde(transparent)]
+pub struct CheckRunId(String);
+
+#[derive(serde::Serialize)]
 pub struct CheckRun {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_id: Option<CheckRunId>,
+
     pub name: &'static str,
     pub head_sha: String,
+
+    /// # Allowed values
+    ///
+    /// * "queued"
+    /// * "in_progress"
+    /// * "completed", requires "conclusion" field
     pub status: &'static str,
-    pub conclusion: &'static str,
+
+    /// Must be some when status is "completed"
+    ///
+    /// # Allowed values
+    ///
+    /// * "success"
+    /// * "failure"
+    /// * "neutral"
+    /// * "timed_out"
+    /// * "action_required", requires "details_url" field
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conclusion: Option<&'static str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<Output>,
 }
 
@@ -22,7 +48,14 @@ pub struct Annotation {
     pub path: String,
     pub start_line: u64,
     pub end_line: u64,
+
+    /// # Allowed values
+    ///
+    /// * "notice"
+    /// * "warning"
+    /// * "failure"
     pub annotation_level: &'static str,
+
     pub message: String,
 }
 
@@ -31,9 +64,10 @@ impl CheckRun {
         self,
         client: &reqwest::r#async::Client,
         installation: &crate::gh::installation::Installation,
-        repo_full_name: String,
-    ) -> impl Future<Item = (), Error = reqwest::Error> {
+        repo_full_name: &str,
+    ) -> impl Future<Item = CheckRunId, Error = reqwest::Error> {
         let client = client.clone();
+        let repo_full_name = repo_full_name.to_string();
         installation
             .get_installation_access_token(&client)
             .and_then(move |install_access_token| {
@@ -54,6 +88,9 @@ impl CheckRun {
                         res.text().map(move |body| {
                             println!("check run submit res: status {:?}", status);
                             println!("{}", body);
+                            let data = serde_json::from_str::<serde_json::Value>(&body).unwrap();
+                            let data = data.as_object().unwrap();
+                            CheckRunId(data["id"].as_u64().unwrap().to_string())
                         })
                     })
             })

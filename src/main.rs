@@ -1,3 +1,5 @@
+#![recursion_limit="128"]
+
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn_ok;
 use hyper::{Body, Request, Response, Server};
