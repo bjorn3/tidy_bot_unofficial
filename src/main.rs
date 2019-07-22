@@ -49,5 +49,7 @@ fn main() {
         .serve(new_svc)
         .map_err(|e| eprintln!("server error: {}", e));
 
+    println!("Serving at {:?}", addr);
+
     hyper::rt::run(server);
 }
