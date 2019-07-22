@@ -46,14 +46,13 @@ fn check_handler(
     let client = reqwest::r#async::Client::new();
 
     CheckRun {
-        external_id: None,
         name: "tidy",
         head_sha: head_sha.to_string(),
         status: "in_progress",
         conclusion: None,
         output: None,
     }
-    .submit(&client, &installation, &repo_full_name)
+    .submit(&client, &installation, &repo_full_name, None)
     .and_then(move |check_run_id| {
         let (tidy_result, errors) = crate::check::run_tidy(&clone_url, &head_sha);
 
@@ -83,7 +82,6 @@ fn check_handler(
             .collect();
 
         let check_run = CheckRun {
-            external_id: Some(check_run_id),
             name: "tidy",
             head_sha: head_sha.to_string(),
             status: "completed",
@@ -101,7 +99,7 @@ fn check_handler(
         };
 
         check_run
-            .submit(&client, &installation, &repo_full_name)
+            .submit(&client, &installation, &repo_full_name, Some(&check_run_id))
             .map(|_check_run_id| ())
     })
     .map_err(|err| {

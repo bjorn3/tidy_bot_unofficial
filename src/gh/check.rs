@@ -1,14 +1,11 @@
 use futures::Future;
 
-#[derive(serde::Serialize)]
+#[derive(Clone, serde::Serialize)]
 #[serde(transparent)]
 pub struct CheckRunId(String);
 
 #[derive(serde::Serialize)]
 pub struct CheckRun {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub external_id: Option<CheckRunId>,
-
     pub name: &'static str,
     pub head_sha: String,
 
@@ -65,18 +62,27 @@ impl CheckRun {
         client: &reqwest::r#async::Client,
         installation: &crate::gh::installation::Installation,
         repo_full_name: &str,
+        check_run_id: Option<&CheckRunId>,
     ) -> impl Future<Item = CheckRunId, Error = reqwest::Error> {
         let client = client.clone();
         let repo_full_name = repo_full_name.to_string();
+        let check_run_id = check_run_id.cloned();
         installation
             .get_installation_access_token(&client)
             .and_then(move |install_access_token| {
-                client
-                    .post(&format!(
+                let req = if let Some(check_run_id) = check_run_id {
+                    client.patch(&format!(
+                        "https://api.github.com/repos/{repo_full_name}/check-runs/{check_run_id}",
+                        repo_full_name = repo_full_name,
+                        check_run_id = check_run_id.0,
+                    ))
+                } else {
+                    client.post(&format!(
                         "https://api.github.com/repos/{repo_full_name}/check-runs",
                         repo_full_name = repo_full_name
                     ))
-                    .header("Accept", "application/vnd.github.antiope-preview+json")
+                };
+                req.header("Accept", "application/vnd.github.antiope-preview+json")
                     .header(
                         "Authorization",
                         format!("Bearer {}", install_access_token.token),
