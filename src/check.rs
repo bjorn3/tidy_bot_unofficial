@@ -7,7 +7,7 @@ pub struct Error {
     pub file_and_line: Option<(String, u64)>,
 }
 
-pub fn run_tidy() -> Vec<Error> {
+pub fn run_tidy() -> (String, Vec<Error>) {
     let output = Command::new("../tidy")
         .current_dir("rust")
         .arg("src")
@@ -21,6 +21,17 @@ pub fn run_tidy() -> Vec<Error> {
     let stderr = String::from_utf8(output.stderr).unwrap();
 
     let result = stdout + &stderr;
+
+    let success_regex = regex::Regex::new(
+        r#"\* \d+ error codes
+\* highest error code: E\d+
+\* \d+ features"#,
+    )
+    .unwrap();
+
+    if success_regex.is_match(result.trim()) {
+        return (result, Vec::new());
+    }
 
     let line_too_long_regex =
         regex::Regex::new(r#"tidy error: ([\w\d/\.-_]+):(\d+): line longer than 100 chars"#)
@@ -43,7 +54,7 @@ pub fn run_tidy() -> Vec<Error> {
         }
     }
 
-    errors
+    (result, errors)
 }
 
 macro_rules! cmd {

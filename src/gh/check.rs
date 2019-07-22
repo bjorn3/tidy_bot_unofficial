@@ -6,7 +6,7 @@ pub struct CheckRun {
     pub head_sha: String,
     pub status: &'static str,
     pub conclusion: &'static str,
-    pub output: Output,
+    pub output: Option<Output>,
 }
 
 #[derive(serde::Serialize)]
