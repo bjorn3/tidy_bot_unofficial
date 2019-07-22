@@ -14,7 +14,7 @@ mod gh {
 
 fn main() {
     let addr = (
-        [127, 0, 0, 1],
+        [0, 0, 0, 0],
         std::env::var("PORT")
             .unwrap_or("3000".to_string())
             .parse::<u16>()
