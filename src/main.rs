@@ -1,4 +1,4 @@
-#![recursion_limit="128"]
+#![recursion_limit = "128"]
 
 use hyper::rt::{Future, Stream};
 use hyper::service::service_fn_ok;
@@ -28,13 +28,11 @@ fn main() {
             let res_body_fut = body
                 .collect()
                 .and_then(move |chunks| {
-                    println!("{:#?}", parts);
                     let body = chunks
                         .into_iter()
                         .map(|chunk| chunk.into_bytes().into_iter())
                         .flatten()
                         .collect::<Vec<_>>();
-                    println!("{}", String::from_utf8_lossy(&body).to_owned());
 
                     handlers::handle(parts, body)
                 })

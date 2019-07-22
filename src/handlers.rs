@@ -7,6 +7,7 @@ pub fn handle(
     let data = serde_json::from_slice::<serde_json::Value>(&body).unwrap();
     let data = data.as_object().unwrap();
     let action = data["action"].as_str().unwrap();
+    println!("===> action {}", action);
     match action {
         "requested" => {
             let check_suite = data["check_suite"].as_object().unwrap();
@@ -22,10 +23,7 @@ pub fn handle(
                 .map(|()| "".to_string())
                 .boxed()
         }
-        _ => {
-            println!("action {}", action);
-            futures::future::ok("".to_string()).boxed()
-        }
+        _ => futures::future::ok("".to_string()).boxed(),
     }
 }
 
@@ -95,7 +93,9 @@ fn check_handler(
             }),
         };
 
-        check_run.submit(&client, &installation, &repo_full_name).map(|_check_run_id| ())
+        check_run
+            .submit(&client, &installation, &repo_full_name)
+            .map(|_check_run_id| ())
     })
     .map_err(|err| {
         panic!("err: {:?}", err);

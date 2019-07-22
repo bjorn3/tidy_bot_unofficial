@@ -42,7 +42,7 @@ impl Installation {
         )
         .unwrap();
 
-        println!("token {}", token);
+        //println!("JWT token {}", token);
 
         let res = client
             .post(&format!(
@@ -53,9 +53,13 @@ impl Installation {
             .header("Authorization", format!("Bearer {}", token))
             .send();
 
-        res.and_then(|mut res| res.text()).map(|text| {
-            println!("access tokens: {}", text);
-            serde_json::from_str::<InstallationAccessToken>(&text).unwrap()
+        res.and_then(|mut res| {
+            let status = res.status();
+            res.text().map(move |text| {
+                assert!(status.is_success(), "{:?}\n{}", status, text);
+                println!("access tokens: {}", text);
+                serde_json::from_str::<InstallationAccessToken>(&text).unwrap()
+            })
         })
     }
 }

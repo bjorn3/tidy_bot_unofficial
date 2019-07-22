@@ -86,8 +86,10 @@ impl CheckRun {
                     .and_then(|mut res| {
                         let status = res.status();
                         res.text().map(move |body| {
-                            println!("check run submit res: status {:?}", status);
-                            println!("{}", body);
+                            //println!("check run submit res: status {:?}", status);
+                            //println!("{}", body);
+                            assert!(status.is_success(), "{:?}\n{}", status, body);
+
                             let data = serde_json::from_str::<serde_json::Value>(&body).unwrap();
                             let data = data.as_object().unwrap();
                             CheckRunId(data["id"].as_u64().unwrap().to_string())
