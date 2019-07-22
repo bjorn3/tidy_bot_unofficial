@@ -46,9 +46,7 @@ fn check_handler(
     }
     .submit(&client, &installation, &repo_full_name)
     .and_then(move |check_run_id| {
-        crate::check::clone_repo(&clone_url, &head_sha).unwrap();
-
-        let (tidy_result, errors) = crate::check::run_tidy();
+        let (tidy_result, errors) = crate::check::run_tidy(&clone_url, &head_sha);
 
         for error in &errors {
             if let Some((file, line)) = &error.file_and_line {

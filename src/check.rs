@@ -1,13 +1,22 @@
 use std::fs;
 use std::io;
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
+
+lazy_static::lazy_static! {
+    static ref GIT_LOCK: Mutex<()> = Mutex::new(());
+}
 
 pub struct Error {
     pub message: String,
     pub file_and_line: Option<(String, u64)>,
 }
 
-pub fn run_tidy() -> (String, Vec<Error>) {
+pub fn run_tidy(repo: &str, commit: &str) -> (String, Vec<Error>) {
+    let _git_lock = GIT_LOCK.lock().unwrap_or_else(|err| err.into_inner());
+
+    clone_repo(repo, commit).unwrap();
+
     let output = Command::new("../tidy")
         .current_dir("rust")
         .arg("src")
