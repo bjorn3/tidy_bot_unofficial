@@ -1,8 +1,7 @@
-use hyper::rt::{Future, Stream};
-use hyper::{Body, Request, Response};
+use hyper::rt::Future;
 
 pub fn handle(
-    parts: hyper::http::request::Parts,
+    _parts: hyper::http::request::Parts,
     body: Vec<u8>,
 ) -> impl Future<Item = String, Error = hyper::Error> {
     let data = serde_json::from_slice::<serde_json::Value>(&body).unwrap();
@@ -29,12 +28,12 @@ pub fn handle(
                 repo_full_name,
                 installation,
             )
-            .map(|()| "success".to_string())
+            .map(|()| "".to_string())
             .boxed()
         }
         _ => {
             println!("action {}", action);
-            futures::future::ok("success".to_string()).boxed()
+            futures::future::ok("".to_string()).boxed()
         }
     }
 }
