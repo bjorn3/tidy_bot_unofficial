@@ -33,7 +33,9 @@ impl Installation {
 
         let token = frank_jwt::encode(
             header,
-            &std::path::PathBuf::from(std::env::var("GITHUB_PRIVATE_KEY").expect("GITHUB_PRIVATE_KEY")),
+            &std::path::PathBuf::from(
+                std::env::var("GITHUB_PRIVATE_KEY").expect("GITHUB_PRIVATE_KEY"),
+            ),
             &payload,
             frank_jwt::Algorithm::RS256,
         )
