@@ -7,7 +7,14 @@ mod handlers;
 mod installation;
 
 fn main() {
-    let addr = ([127, 0, 0, 1], std::env::var("PORT").unwrap_or("3000".to_string()).parse::<u16>().unwrap()).into();
+    let addr = (
+        [127, 0, 0, 1],
+        std::env::var("PORT")
+            .unwrap_or("3000".to_string())
+            .parse::<u16>()
+            .unwrap(),
+    )
+        .into();
 
     let new_svc = || {
         service_fn_ok(|req: Request<Body>| {
