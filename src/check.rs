@@ -1,5 +1,3 @@
-use std::fs;
-use std::io;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
@@ -15,7 +13,15 @@ pub struct Error {
 pub fn run_tidy(repo: &str, commit: &str) -> (String, Vec<Error>) {
     let _git_lock = GIT_LOCK.lock().unwrap_or_else(|err| err.into_inner());
 
-    clone_repo(repo, commit).unwrap();
+    let clone_status = Command::new("bash")
+        .arg("./clone_repo.sh")
+        .arg(repo)
+        .arg(commit)
+        .status()
+        .expect("Couldn't run clone_repo.sh");
+    if !clone_status.success() {
+        panic!("Cloning of {} (commit {}) failed", repo, commit);
+    }
 
     let output = Command::new("../tidy")
         .current_dir("rust")
@@ -64,59 +70,4 @@ pub fn run_tidy(repo: &str, commit: &str) -> (String, Vec<Error>) {
     }
 
     (result, errors)
-}
-
-macro_rules! cmd {
-    (@($wd:expr) $cmd:ident $($args:expr),*) => {{
-        let mut cmd = Command::new(stringify!($cmd));
-        cmd.current_dir($wd);
-        $(
-            cmd.arg($args);
-        )*
-        cmd.status()
-    }};
-    ($cmd:ident $($args:expr),*) => {
-        cmd!(@(".") $cmd $($args),*);
-    };
-}
-
-pub fn clone_repo(repo: &str, commit: &str) -> io::Result<()> {
-    if fs::read_dir("rust").is_err() {
-        println!("===> Cloning https://github.com/rust-lang/rust.git");
-        cmd!(git "clone", "https://github.com/rust-lang/rust.git")?;
-    }
-
-    let repo_id = {
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        repo.hash(&mut hasher);
-        hasher.finish().to_string()
-    };
-
-    println!("===> Cloning {}", repo);
-
-    let known_remotes = String::from_utf8(
-        Command::new("git")
-            .current_dir("rust")
-            .arg("remote")
-            .stdout(Stdio::piped())
-            .output()?
-            .stdout,
-    )
-    .unwrap();
-
-    if known_remotes
-        .split('\n')
-        .find(|repo| repo == &repo_id)
-        .is_none()
-    {
-        cmd!(@("rust") git "remote", "add", &repo_id, repo)?;
-    }
-    cmd!(@("rust") git "fetch", repo_id)?;
-    cmd!(@("rust") git "checkout", commit)?;
-
-    println!("===> Checked out {}", commit);
-
-    Ok(())
 }
