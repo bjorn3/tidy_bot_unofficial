@@ -1,18 +1,9 @@
 use hyper::rt::Future;
 
-pub fn handle(
-    parts: hyper::http::request::Parts,
+pub fn webhook_handle(
+    _parts: hyper::http::request::Parts,
     body: Vec<u8>,
-) -> impl Future<Item = String, Error = hyper::Error> {
-    if parts.method == hyper::http::Method::GET {
-        return futures::future::ok(
-            "Rust tidy bot (unofficial).\n\
-             See https://github.com/bjorn3/tidy_bot_unofficial for more information."
-                .to_string(),
-        )
-        .boxed();
-    }
-
+) -> Box<Future<Item = String, Error = hyper::Error> + Send> {
     let data = serde_json::from_slice::<serde_json::Value>(&body).unwrap();
     let data = data.as_object().unwrap();
     let action = data["action"].as_str().unwrap();
