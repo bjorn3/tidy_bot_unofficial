@@ -45,6 +45,22 @@ fn check_handler(
     use crate::gh::check::*;
     let client = reqwest::r#async::Client::new();
 
+    let is_rustc_repo = client
+        .get(&format!(
+            "https://api.github.com/repos/{repo_full_name}/contents/src/librustc",
+            repo_full_name = repo_full_name
+        ))
+        .send()
+        .and_then(|res| res.text())
+        .map(|text| {
+            let data: serde_json::Value = serde_json::from_str(&text).unwrap();
+            if data.as_array().is_some() {
+                true // src/librustc is an existing dir
+            } else {
+                false // src/librustc is not existing or is a file
+            }
+        });
+
     CheckRun {
         name: "tidy",
         head_sha: head_sha.to_string(),
