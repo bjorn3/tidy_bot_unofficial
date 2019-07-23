@@ -23,12 +23,12 @@ pub fn handle(
             let head_sha = check_suite["head_sha"].as_str().unwrap().to_string();
 
             let repository = data["repository"].as_object().unwrap();
-            let clone_url = repository["clone_url"].as_str().unwrap().to_string();
+            let html_url = repository["html_url"].as_str().unwrap().to_string();
             let repo_full_name = repository["full_name"].as_str().unwrap().to_string();
 
             let installation = serde_json::from_value(data["installation"].clone()).unwrap();
 
-            check_handler(clone_url, head_sha, repo_full_name, installation)
+            check_handler(html_url, head_sha, repo_full_name, installation)
                 .map(|()| "".to_string())
                 .boxed()
         }
@@ -37,7 +37,7 @@ pub fn handle(
 }
 
 fn check_handler(
-    clone_url: String,
+    html_url: String,
     head_sha: String,
     repo_full_name: String,
     installation: crate::gh::installation::Installation,
@@ -54,7 +54,7 @@ fn check_handler(
     }
     .submit(&client, &installation, &repo_full_name, None)
     .and_then(move |check_run_id| {
-        let (tidy_result, errors) = crate::check::run_tidy(&clone_url, &head_sha);
+        let (tidy_result, errors) = crate::check::run_tidy(&html_url, &head_sha);
 
         for error in &errors {
             if let Some((file, line)) = &error.file_and_line {
